@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThreeGPT - AI Conversation Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a1a;
+            color: #e5e5e5;
+        }
+        .message {
+            opacity: 0;
+            transition: all 0.5s ease-in;
+            transform: translateY(20px);
+        }
+        .message.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 50;
+        }
+        .modal-content {
+            opacity: 0;
+            transform: scale(0.7);
+            transition: all 0.3s ease-in-out;
+        }
+        .modal.show .modal-content {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .message-wrapper {
+            margin-bottom: 1rem;
+        }
+        
+        .message {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease-out;
+        }
+        
+        .message.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .whitespace-pre-wrap {
+            white-space: pre-wrap;
+        }
+        
+        .welcome-container {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.8s ease-out;
+        }
+        
+        .welcome-container.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .welcome-text {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease-out;
+        }
+        
+        .welcome-text.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .input-container {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease-out;
+            transition-delay: 1.5s;
+        }
+        
+        .input-container.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 min-h-screen text-gray-100">
+    <!-- Welcome Screen -->
+    <div id="welcome-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900">
+        <div class="welcome-container max-w-2xl mx-auto p-6 text-center">
+            <h1 class="text-5xl font-bold text-gray-100 mb-8">ThreeGPT</h1>
+            
+            <div class="space-y-4 mb-12">
+                <p class="welcome-text text-xl text-gray-300">Experience natural conversations with AI agents James and Mike.</p>
+                <p class="welcome-text text-xl text-gray-300">Get instant summaries from Bob whenever you need them.</p>
+                <p class="welcome-text text-xl text-gray-300">Start by entering any topic you'd like to discuss.</p>
+            </div>
+            
+            <div class="input-container">
+                <div class="flex gap-4 justify-center">
+                    <input type="text" 
+                           id="welcome-topic" 
+                           placeholder="Enter a topic for discussion..." 
+                           class="w-96 px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-white placeholder-gray-400"
+                           onkeydown="handleKeyPress(event)">
+                    <button onclick="startFromWelcome()" 
+                            class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition">
+                        Start
+                    </button>
+                </div>
+                <p class="mt-4 text-gray-400 text-sm">Press Enter to start • Press Esc anytime to get summary</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Chat Interface (Initially Hidden) -->
+    <div id="chat-interface" class="hidden max-w-4xl mx-auto p-6">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-100 mb-2">ThreeGPT</h1>
+            <p class="text-gray-400">AI Conversation Platform</p>
+        </div>
+
+        <!-- Controls -->
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 mb-8">
+            <div class="flex gap-4">
+                <input type="text" 
+                       id="topic" 
+                       placeholder="Enter a topic for discussion..." 
+                       class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-white placeholder-gray-400"
+                       onkeydown="handleKeyPress(event)">
+                <button onclick="startDiscussion()" 
+                        class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition">
+                    Start Discussion
+                </button>
+                <button onclick="openSummaryModal()" 
+                        class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition">
+                    Get Summary
+                </button>
+            </div>
+        </div>
+
+        <!-- Conversation Area -->
+        <div id="conversation" class="space-y-4 mb-8"></div>
+
+        <!-- Summary Modal -->
+        <div id="summaryModal" class="modal">
+            <div class="flex items-center justify-center min-h-screen p-4">
+                <div class="modal-content bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold text-gray-100">Discussion Summary</h3>
+                        <button onclick="closeSummaryModal()" class="text-gray-400 hover:text-gray-200">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="summary-content" class="mt-4"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quote of the Day -->
+        <div id="quote-of-day" class="mt-12 p-6 bg-gray-800 rounded-lg shadow-xl">
+            <p id="quote-text" class="text-gray-300 italic text-center"></p>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-12 text-center text-gray-400">
+            <p class="mb-2">Created by <a href="https://github.com/baurujyan" class="text-blue-400 hover:text-blue-300 transition">Bauirjan Jaksimuratov</a> - 2024</p>
+            <a href="https://github.com/baurujyan" class="inline-block hover:text-blue-300 transition">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd"></path>
+                </svg>
+            </a>
+        </footer>
+    </div>
+
+    <script>
+        let messages = [];
+        let isConversationActive = false;
+        
+        function createMessageElement(agent, content) {
+            const bgColors = {
+                agent1: 'bg-blue-900/50 border-blue-700',
+                agent2: 'bg-green-900/50 border-green-700',
+                agent3: 'bg-amber-900/50 border-amber-700'
+            };
+            
+            const nameColors = {
+                agent1: 'text-blue-400',
+                agent2: 'text-green-400',
+                agent3: 'text-amber-400'
+            };
+            
+            const names = {
+                agent1: 'James',
+                agent2: 'Mike',
+                agent3: 'Bob'
+            };
+
+            return `
+                <div class="message ${bgColors[agent]} border rounded-lg p-4 shadow-sm mb-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center ${nameColors[agent]} font-semibold">
+                            ${names[agent][0]}
+                        </div>
+                        <span class="font-medium ${nameColors[agent]}">${names[agent]}</span>
+                    </div>
+                    <div class="text-gray-300 ml-10 whitespace-pre-wrap">
+                        ${content}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function startDiscussion() {
+            const topic = document.getElementById('topic').value.trim() || 'Tell me something interesting';
+            isConversationActive = true;
+            
+            const conversationDiv = document.getElementById('conversation');
+            conversationDiv.innerHTML = `
+                <div class="flex justify-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch('/start_conversation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        topic: topic,
+                        continue_conversation: false
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('Response data:', data); // Debug log
+                
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                }
+                
+                if (!Array.isArray(data)) {
+                    throw new Error('Invalid response format: expected an array');
+                }
+                
+                messages = data;
+                displayMessagesSequentially();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                conversationDiv.innerHTML = `
+                    <div class="text-red-400 text-center p-4 bg-red-900/20 rounded-lg">
+                        <p class="font-semibold mb-2">Error starting conversation</p>
+                        <p class="text-sm">${error.message}</p>
+                        <button onclick="startDiscussion()" 
+                                class="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition">
+                            Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        async function getSummary() {
+            try {
+                const response = await fetch('/get_summary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messages })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to get summary');
+                }
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                const summaryContent = document.getElementById('summary-content');
+                summaryContent.innerHTML = createMessageElement('agent3', data.agent3);
+                
+                // Add visible class to the new message
+                const messageElement = summaryContent.querySelector('.message');
+                if (messageElement) {
+                    setTimeout(() => messageElement.classList.add('visible'), 10);
+                }
+            } catch (error) {
+                const summaryContent = document.getElementById('summary-content');
+                summaryContent.innerHTML = `
+                    <div class="text-red-400 text-center p-4 bg-red-900/20 rounded-lg">
+                        <p class="text-sm">Error getting summary: ${error.message}</p>
+                        <button onclick="getSummary()" 
+                                class="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition">
+                            Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        function displayMessagesSequentially() {
+            const conversationDiv = document.getElementById('conversation');
+            if (!conversationDiv) {
+                console.error('Conversation div not found');
+                return;
+            }
+            
+            console.log('Messages to display:', messages); // Debug log
+            
+            // Clear existing messages
+            conversationDiv.innerHTML = '';
+            
+            if (!Array.isArray(messages)) {
+                console.error('Messages is not an array:', messages);
+                return;
+            }
+            
+            messages.forEach((message, index) => {
+                if (!message || typeof message !== 'object') {
+                    console.error('Invalid message:', message);
+                    return;
+                }
+                
+                try {
+                    const agent = Object.keys(message)[0];
+                    const content = message[agent];
+                    
+                    // Create a wrapper div
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'message-wrapper';
+                    
+                    // Set the HTML content
+                    wrapper.innerHTML = createMessageElement(agent, content);
+                    
+                    // Add to conversation
+                    conversationDiv.appendChild(wrapper);
+                    
+                    // Add visible class after a short delay
+                    setTimeout(() => {
+                        const messageElement = wrapper.querySelector('.message');
+                        if (messageElement) {
+                            messageElement.classList.add('visible');
+                        }
+                        
+                        // Continue conversation if this is the last message
+                        if (index === messages.length - 1 && isConversationActive) {
+                            setTimeout(() => {
+                                continueConversation(content);
+                            }, 1000);
+                        }
+                    }, index * 500);
+                    
+                } catch (error) {
+                    console.error('Error displaying message:', error);
+                }
+            });
+        }
+
+        // Update the continueConversation function with delays
+        async function continueConversation(lastMessage) {
+            if (!isConversationActive) return;
+            
+            try {
+                // Add a delay before sending the next message (2 seconds)
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                const initialQuestion = messages.length > 0 ? messages[0].agent2 : '';
+                
+                // Get the last message's agent
+                const lastMessageAgent = Object.keys(messages[messages.length - 1])[0];
+                console.log('Last message was from:', lastMessageAgent); // Debug log
+                
+                const response = await fetch('/start_conversation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        topic: lastMessage,
+                        continue_conversation: true,
+                        initial_question: initialQuestion,
+                        last_agent: lastMessageAgent  // Add this to help backend determine next speaker
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                }
+                
+                // Only append new messages instead of reloading everything
+                const conversationDiv = document.getElementById('conversation');
+                data.forEach((message, index) => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'message-wrapper';
+                    wrapper.innerHTML = createMessageElement(Object.keys(message)[0], Object.values(message)[0]);
+                    conversationDiv.appendChild(wrapper);
+                    
+                    setTimeout(() => {
+                        const messageElement = wrapper.querySelector('.message');
+                        if (messageElement) {
+                            messageElement.classList.add('visible');
+                        }
+                        
+                        if (index === data.length - 1 && isConversationActive) {
+                            setTimeout(() => {
+                                continueConversation(Object.values(message)[0]);
+                            }, 1000);
+                        }
+                    }, index * 500);
+                });
+                
+                // Update messages array without reloading
+                messages = [...messages, ...data];
+                
+            } catch (error) {
+                console.error('Error continuing conversation:', error);
+                isConversationActive = false;
+                const conversationDiv = document.getElementById('conversation');
+                conversationDiv.innerHTML += `
+                    <div class="text-red-400 text-center p-4 bg-red-900/20 rounded-lg">
+                        <p class="text-sm">Error continuing conversation: ${error.message}</p>
+                        <button onclick="startDiscussion()" 
+                                class="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition">
+                            Restart
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Add these new functions
+        function openSummaryModal() {
+            // Stop the conversation
+            isConversationActive = false;
+            
+            const modal = document.getElementById('summaryModal');
+            modal.style.display = 'block';
+            
+            // Clear previous content and show loading
+            const summaryContent = document.getElementById('summary-content');
+            summaryContent.innerHTML = `
+                <div class="flex justify-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                </div>
+            `;
+            
+            // Add modal class after display is set
+            setTimeout(() => {
+                modal.classList.add('show');
+                // Get summary after modal is visible
+                getSummary();
+            }, 10);
+        }
+
+        function closeSummaryModal() {
+            const modal = document.getElementById('summaryModal');
+            modal.classList.remove('show');
+            setTimeout(() => modal.style.display = 'none', 300);
+        }
+
+        // Add quote of the day functionality
+        async function getQuoteOfDay() {
+            try {
+                const response = await fetch('/get_quote', {
+                    method: 'GET'
+                });
+                const data = await response.json();
+                document.getElementById('quote-text').textContent = data.quote;
+            } catch (error) {
+                console.error('Error fetching quote:', error);
+            }
+        }
+
+        // Add a function to resume conversation if needed
+        function resumeConversation() {
+            isConversationActive = true;
+            const lastMessage = messages[messages.length - 1];
+            if (lastMessage) {
+                continueConversation(Object.values(lastMessage)[0]);
+            }
+        }
+
+        // Add keyboard event listeners
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                if (isConversationActive) {
+                    openSummaryModal();
+                    isConversationActive = false;
+                }
+            }
+        });
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                if (document.getElementById('welcome-screen').style.display !== 'none') {
+                    startFromWelcome();
+                } else {
+                    startDiscussion();
+                }
+            }
+        }
+
+        // Welcome screen animation
+        window.onload = function() {
+            const welcomeContainer = document.querySelector('.welcome-container');
+            const welcomeTexts = document.querySelectorAll('.welcome-text');
+            const inputContainer = document.querySelector('.input-container');
+            
+            welcomeContainer.classList.add('visible');
+            
+            welcomeTexts.forEach((text, index) => {
+                setTimeout(() => {
+                    text.classList.add('visible');
+                }, 500 + (index * 300));
+            });
+            
+            setTimeout(() => {
+                inputContainer.classList.add('visible');
+            }, 1500);
+        }
+
+        function startFromWelcome() {
+            const welcomeTopic = document.getElementById('welcome-topic').value.trim();
+            if (welcomeTopic) {
+                document.getElementById('welcome-screen').style.display = 'none';
+                document.getElementById('chat-interface').classList.remove('hidden');
+                document.getElementById('topic').value = welcomeTopic;
+                startDiscussion();
+            }
+        }
+
+        // Call when page loads
+        getQuoteOfDay();
+    </script>
+</body>
+</html>

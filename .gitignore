@@ -1,0 +1,9 @@
+# Ignore config file with API key
+config.txt
+
+# Other common files to ignore
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
