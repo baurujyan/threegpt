@@ -1,5 +1,7 @@
 # ThreeGPT
 
+[Try ThreeGPT](https://threegpt.vercel.app/) | [Learn more about ThreeGPT](https://threegpt.vercel.app/about)
+
 ThreeGPT is an innovative AI conversation platform that simulates natural discussions between three AI agents: James, Mike, and Bob. Each agent has a unique role in creating meaningful, focused conversations about any topic you choose.
 
 ## Features
