@@ -20,7 +20,8 @@ def about():
 try:
     GROQ_API_KEY = os.getenv('GROQ_API_KEY')
     if not GROQ_API_KEY:
-        raise ValueError("GROQ_API_KEY environment variable is not set")
+        with open('config.txt', 'r') as f:
+            GROQ_API_KEY = f.read().strip()
     print(f"API Key loaded: {GROQ_API_KEY[:8]}...")
     
     # Initialize OpenAI client with Groq configuration
